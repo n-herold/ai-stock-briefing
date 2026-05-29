@@ -1,0 +1,238 @@
+{
+  "name": "📈 Tägliches Markt-Briefing",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "a970d51e-f438-4dc9-adf3-952729037829",
+      "name": "⏰ Jeden Morgen 7 Uhr",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        480,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://newsapi.org/v2/everything",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "Nebius OR Nvidia OR Silver OR Apple OR Monster Beverage OR Meta OR Amazon OR Novo Nordisk OR Xiaomi OR BYD OR Credo Technologies OR Cerebras"
+            },
+            {
+              "name": "language",
+              "value": "en"
+            },
+            {
+              "name": "sortBy",
+              "value": "publishedAt"
+            },
+            {
+              "name": "pageSize",
+              "value": "20"
+            },
+            {
+              "name": "apiKey",
+              "value": "YOUR_News API Key"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cdb368d7-8c0b-471b-b1b7-bed93f3ed843",
+      "name": "📰 News holen",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        704,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const articles = $input.first().json.articles || [];\n\nconst summaries = articles.slice(0, 15).map(a => {\n  return `- ${a.title} (${a.source?.name || 'Unbekannt'}, ${new Date(a.publishedAt).toLocaleDateString('de-DE')})`;\n}).join('\\n');\n\nconst today = new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });\n\nreturn [{\n  json: {\n    newsText: summaries || 'Keine aktuellen News gefunden.',\n    today: today\n  }\n}];"
+      },
+      "id": "ff88ae5b-b714-4211-a21c-05b2afac4917",
+      "name": "🔧 News aufbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output || \"\";\n\n// Markdown-Backticks und \\n bereinigen\nconst clean = raw\n  .replace(/```html/g, \"\")\n  .replace(/```/g, \"\")\n  .replace(/\\\\n/g, \"\")\n  .trim();\n\nconst today = $('🔧 News aufbereiten').first().json.today;\n\nreturn [{\n  json: {\n    briefing: clean,\n    today: today,\n    subject: `📈 Dein Markt-Briefing – ${today}`\n  }\n}];"
+      },
+      "id": "927aca0d-7b24-4859-9fda-858215251bf8",
+      "name": "📝 E-Mail vorbereiten",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "Your Mail adress",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.briefing }}",
+        "options": {}
+      },
+      "id": "911f1889-5edc-49d4-8b43-0ca18cf9abf7",
+      "name": "📧 E-Mail senden",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1584,
+        32
+      ],
+      "webhookId": "b2504acd-d92c-444c-9123-936c8e45843e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "vJGgem5CXCS4nubL",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Heute: {{ $json.today }}\n\nAktuelle News:\n{{ $json.newsText }}\n\nDu bist ein erfahrener Finanzanalyst. Erstelle ein tägliches Markt-Briefing als HTML.\n\nWICHTIG: Gib NUR reinen HTML-Code zurück, kein Markdown, keine Backticks, keine Erklärungen!\n\nPFLICHT: Jede einzelne Aktie MUSS erscheinen – auch wenn keine News vorhanden. \nBei fehlenden News: kurze Einschätzung aus deinem Wissen (Trend, Sektor-Stimmung, technische Lage).\n\nAktien nach Kategorie:\n🤖 KI & Tech: Nebius, Nvidia, Credo Technologies, Cerebras Systems\n📱 Big Tech: Apple, Meta, Amazon\n🌿 Gesundheit & Rohstoffe: Novo Nordisk, Silber (XAG)\n🚗 EV & Emerging: Xiaomi, BYD\n🥤 Consumer: Monster Beverage\n\nStimmung: 🟢 positiv | 🟡 neutral | 🔴 negativ\n\nErstelle folgendes HTML:\n\n<div style=\"font-family:Arial,sans-serif;max-width:650px;margin:0 auto;background:#f4f4f4;padding:20px;\">\n\n<!-- HEADER -->\n<div style=\"background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:25px;border-radius:12px;margin-bottom:15px;\">\n<h1 style=\"margin:0;font-size:22px;\">📈 Tägliches Markt-Briefing</h1>\n<p style=\"margin:5px 0 0;opacity:0.8;\">{{ $json.today }}</p>\n</div>\n\n<!-- MARKT-ÜBERBLICK -->\n<div style=\"background:#27ae60;color:white;padding:15px;border-radius:10px;margin-bottom:15px;\">\n<h2 style=\"margin:0 0 8px;font-size:16px;\">📊 Markt-Überblick</h2>\n<p style=\"margin:0;font-size:14px;\">[2-3 Sätze zur allgemeinen Marktstimmung heute]</p>\n</div>\n\n<!-- JE KATEGORIE EINE KARTE MIT TABELLE -->\n[Für jede Kategorie:]\n<div style=\"background:white;border-radius:10px;padding:15px;margin-bottom:15px;border-left:4px solid #3498db;\">\n<h3 style=\"margin:0 0 10px;font-size:15px;\">[Kategorie-Emoji + Name]</h3>\n<table style=\"width:100%;border-collapse:collapse;font-size:13px;\">\n<tr style=\"background:#f8f9fa;\">\n<th style=\"padding:8px;text-align:left;\">Aktie</th>\n<th style=\"padding:8px;text-align:center;\">Stimmung</th>\n<th style=\"padding:8px;text-align:left;\">News / Einschätzung</th>\n</tr>\n[Für jede Aktie eine Zeile – KEINE AKTIE WEGLASSEN]\n<tr style=\"border-bottom:1px solid #eee;\">\n<td style=\"padding:8px;font-weight:bold;\">[Aktienname]</td>\n<td style=\"padding:8px;text-align:center;\">[🟢/🟡/🔴]</td>\n<td style=\"padding:8px;color:#555;\">[News oder Einschätzung]</td>\n</tr>\n</table>\n</div>\n\n<!-- 3 HEISSE TIPPS -->\n<div style=\"background:#e67e22;color:white;padding:15px;border-radius:10px;margin-bottom:15px;\">\n<h2 style=\"margin:0 0 12px;font-size:16px;\">🔥 3 Heiße Tipps heute</h2>\n[3 Karten:]\n<div style=\"background:rgba(255,255,255,0.15);border-radius:8px;padding:12px;margin-bottom:8px;\">\n<strong>[Nr]. [Aktienname]</strong><br>\n<span style=\"font-size:13px;\">[Begründung warum heute interessant]</span>\n</div>\n</div>\n\n<!-- RISIKEN -->\n<div style=\"background:#e74c3c;color:white;padding:15px;border-radius:10px;\">\n<h2 style=\"margin:0 0 8px;font-size:16px;\">⚠️ Risiken heute</h2>\n<p style=\"margin:0;font-size:13px;\">[2-3 konkrete Risiken die heute relevant sind]</p>\n</div>\n\n</div>",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1072,
+        16
+      ],
+      "id": "67a26748-6290-4e23-bde4-dca799fc1f4b",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.5,
+      "position": [
+        1056,
+        192
+      ],
+      "id": "52585b11-73b5-46e2-ba38-b5580dc04382",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "43OoA97vN0x6r4N3",
+          "name": "Anthropic account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "⏰ Jeden Morgen 7 Uhr": {
+      "main": [
+        [
+          {
+            "node": "📰 News holen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📰 News holen": {
+      "main": [
+        [
+          {
+            "node": "🔧 News aufbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 E-Mail vorbereiten": {
+      "main": [
+        [
+          {
+            "node": "📧 E-Mail senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔧 News aufbereiten": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "📝 E-Mail vorbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "429e0b72-7447-4f3f-b503-98dc01245bb1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6a3943b69063aebec0e24897a58a598748ae4a4a6c227ff4bb03cc45e7f6d292"
+  },
+  "id": "97MuEBZEhylaq3b2",
+  "tags": []
+}
